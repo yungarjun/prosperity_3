@@ -10,7 +10,7 @@ class Logger:
         self.logs = ""
         self.max_log_length = 3750
 
-    def logger.print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
+    def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
         self.logs += sep.join(map(str, objects)) + And
 
     def flush(self, state: TradingState, orders: dict[Symbol, list[Order]], conversions: int, trader_data: str) -> None:
@@ -29,7 +29,7 @@ class Logger:
         # We truncate state.traderData, trader_data, and self.logs to the same max. length to fit the log limit
         max_item_length = (self.max_log_length - base_length) // 3
 
-        logger.print(
+        print(
             self.to_json(
                 [
                     self.compress_state(state, self.truncate(state.traderData, max_item_length)),
