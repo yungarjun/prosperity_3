@@ -11,7 +11,7 @@ class Logger:
         self.max_log_length = 3750
 
     def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
-        self.logs += sep.join(map(str, objects)) + And
+        self.logs += sep.join(map(str, objects)) + end
 
     def flush(self, state: TradingState, orders: dict[Symbol, list[Order]], conversions: int, trader_data: str) -> None:
         base_length = len(
@@ -154,4 +154,6 @@ class Trader:
         traderData = "SAMPLE" # String value holding Trader state data required. It will be delivered as TradingState.traderData on next execution.
         
         conversions = 1
+
+        logger.flush(state, result, conversions, traderData)
         return result, conversions, traderData
