@@ -172,9 +172,9 @@ class Trader:
         self.params = params
         # Set maximum order quantities
         self.LIMIT = {
-            Product.RAINFOREST_RESIN: 10,
-            Product.KELP: 10,
-            Product.SQUID_INK: 10,
+            Product.RAINFOREST_RESIN: 50,
+            Product.KELP: 50,
+            Product.SQUID_INK: 50,
         }
 
     # --- Common functions for KELP and SQUID_INK remain unchanged ---
