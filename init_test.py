@@ -139,11 +139,11 @@ PARAMS = {
     },
     Product.KELP: {
         "fair_value": 10000,
-        "take_width": 0.3,
+        "take_width": 0.1,
         "clear_width": 3,
         "prevent_adverse": True,
         "adverse_volume": 15,
-        "reversion_beta": -0.4,
+        "reversion_beta": -0.6,
         "disregard_edge": 0.5,
         "join_edge": 0.5,
         "default_edge": 0.5,
@@ -171,9 +171,9 @@ class Trader:
         self.params = params
         # Set maximum order amounts for the three products
         self.LIMIT = {
-            Product.RAINFOREST_RESIN: 10,
-            Product.KELP: 10,
-            Product.SQUID_INK: 10,
+            Product.RAINFOREST_RESIN: 50,
+            Product.KELP: 50,
+            Product.SQUID_INK: 50,
         }
 
     def take_best_orders(
