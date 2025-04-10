@@ -432,9 +432,9 @@ class Trader:
             buy_qty = self.LIMIT[Product.RAINFOREST_RESIN] - resin_position
             sell_qty = self.LIMIT[Product.RAINFOREST_RESIN] + resin_position
             if buy_qty > 0:
-                orders.append(Order(Product.RAINFOREST_RESIN, 9996, buy_qty))
+                orders.append(Order(Product.RAINFOREST_RESIN, 9998, buy_qty))
             if sell_qty > 0:
-                orders.append(Order(Product.RAINFOREST_RESIN, 10004, -sell_qty))
+                orders.append(Order(Product.RAINFOREST_RESIN, 10002, -sell_qty))
             result[Product.RAINFOREST_RESIN] = orders
 
         # ---------------- KELP ----------------
