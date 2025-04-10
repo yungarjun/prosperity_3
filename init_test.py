@@ -151,15 +151,15 @@ PARAMS = {
     },
     Product.SQUID_INK: {
         "fair_value": 2000,         # Baseline fair value (starting point)
-        "take_width": 0.5,          
+        "take_width": 1,          
         "clear_width": 1,           
         "prevent_adverse": False,
-        "adverse_volume": 20,
-        "reversion_beta": -0.25,    # Used in mean reverting mode
-        "breakout_threshold": 50,   # If midprice deviates more than 30 units, follow the trend
-        "disregard_edge": 0.5,
-        "join_edge": 0.5,
-        "default_edge": 1,
+        "adverse_volume": 7,
+        "reversion_beta": -0.5,    # Used in mean reverting mode
+        "breakout_threshold": 1.1,   # If midprice deviates more than 30 units, follow the trend
+        "disregard_edge": 1,
+        "join_edge": 2,
+        "default_edge": 3,
         "soft_position_limit": 50,
     },
 }
@@ -448,34 +448,40 @@ class Trader:
         from the baseline, follow the trend. Otherwise, apply a mean-reverting adjustment.
         """
         params = self.params[Product.SQUID_INK]
+
+        squid_ink_last_price = traderObject.get("squidink_last_price")
         if not order_depth.sell_orders or not order_depth.buy_orders:
-            return params["fair_value"]
-        best_ask = min(order_depth.sell_orders.keys())
-        best_bid = max(order_depth.buy_orders.keys())
-        midprice = (best_ask + best_bid) / 2
-        static_fv = params["fair_value"]
-        breakout_threshold = params["breakout_threshold"]
+            if squid_ink_last_price is not None:
+                return squid_ink_last_price
+            else:
+                return None
+            
+        elif order_depth.sell_orders and order_depth.buy_orders:
+            best_ask = min(order_depth.sell_orders.keys())
+            best_bid = max(order_depth.buy_orders.keys())
+            midprice = (best_ask + best_bid) / 2
+            # static_fair_value = params["fair_value"]
+            breakout_threshold = params["breakout_threshold"]
 
-        # Check for breakout/trending mode:
-        if midprice > static_fv + breakout_threshold:
-            fv = midprice  # Follow upward trend
-        elif midprice < static_fv - breakout_threshold:
-            fv = midprice  # Follow downward trend
+            # Check for breakout/trending mode:
+            if squid_ink_last_price is not None:
+                if abs(midprice - squid_ink_last_price) > breakout_threshold:
+                    # If the price has moved significantly, we follow the trend
+                    fair_value = midprice
+                else:
+                    # If the price hasn't moved significantly, we revert to the mean
+                    last_price = traderObject["squidink_last_price"]
+                    last_returns = (midprice - last_price) / last_price
+                    fair_value = midprice + (midprice * last_returns * params["reversion_beta"])
+                traderObject["squidink_last_price"] = fair_value
+                return fair_value
+            else:
+                fair_value = midprice
+                traderObject["squidink_last_price"] = fair_value
+                return fair_value
+
         else:
-            # Mean reverting adjustment
-            if traderObject.get("squidink_last_price") is None:
-                mmmid_price = midprice
-            else:
-                mmmid_price = traderObject["squidink_last_price"]
-            if traderObject.get("squidink_last_price") is not None:
-                last_price = traderObject["squidink_last_price"]
-                last_returns = (midprice - last_price) / last_price
-                fv = midprice + (midprice * last_returns * params["reversion_beta"])
-            else:
-                fv = midprice
-
-        traderObject["squidink_last_price"] = midprice
-        return fv
+            return None
 
     def run(self, state: TradingState):
         # Load or initialize persistent trader data.
