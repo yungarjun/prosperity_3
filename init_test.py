@@ -130,24 +130,24 @@ class Product:
 PARAMS = {
     Product.RAINFOREST_RESIN: {
         "fair_value": 10000,
-        "take_width": 0.5,          
-        "clear_width": 0,
-        "disregard_edge": 0.5,
-        "join_edge": 1,
-        "default_edge": 2,
-        "soft_position_limit": 50,
+        "take_width": 1,          
+        "clear_width": 1,
+        "disregard_edge": 1,
+        "join_edge": 2,
+        "default_edge": 4,
+        "soft_position_limit": 9,
     },
     Product.KELP: {
-        "fair_value": 10000,
-        "take_width": 0.1,
-        "clear_width": 3,
-        "prevent_adverse": True,
-        "adverse_volume": 15,
+        "fair_value": 2032,
+        "take_width": 1,
+        "clear_width": 2,
+        "prevent_adverse": False,
+        "adverse_volume": 1,
         "reversion_beta": -0.6,
-        "disregard_edge": 0.5,
+        "disregard_edge": 2,
         "join_edge": 0.5,
-        "default_edge": 0.5,
-        "soft_position_limit": 50,
+        "default_edge": 1,
+        "soft_position_limit": 9,
     },
     Product.SQUID_INK: {
         "fair_value": 2000,         # Baseline fair value (starting point)
@@ -165,10 +165,12 @@ PARAMS = {
 }
 
 class Trader:
-    def __init__(self, params=None):
+    def __init__(self, params=None, flush=True) -> None:
         if params is None:
             params = PARAMS
         self.params = params
+        self.flush = flush
+
         # Set maximum order amounts for the three products
         self.LIMIT = {
             Product.RAINFOREST_RESIN: 50,
@@ -294,10 +296,10 @@ class Trader:
     ):
         orders: List[Order] = []
         asks_above_fair = [
-            price for price in order_depth.sell_orders.keys() if price > fair_value + disregard_edge
+            price for price in order_depth.sell_orders.keys() if price >= fair_value + disregard_edge
         ]
         bids_below_fair = [
-            price for price in order_depth.buy_orders.keys() if price < fair_value - disregard_edge
+            price for price in order_depth.buy_orders.keys() if price <= fair_value - disregard_edge
         ]
 
         best_ask_above_fair = min(asks_above_fair) if asks_above_fair else None
@@ -381,41 +383,64 @@ class Trader:
         return orders, buy_order_volume, sell_order_volume
 
     def kelp_fair_value(self, order_depth: OrderDepth, traderObject) -> float:
-        """
-        Compute a dynamic, mean-reverting fair value for KELP.
-        """
+
+        '''
+        Compute fair value from order depth using bid and ask from market maker
+        '''
+
         if order_depth.sell_orders and order_depth.buy_orders:
-            best_ask = min(order_depth.sell_orders.keys())
-            best_bid = max(order_depth.buy_orders.keys())
-            filtered_ask = [
-                price for price in order_depth.sell_orders.keys()
-                if abs(order_depth.sell_orders[price]) >= self.params[Product.KELP]["adverse_volume"]
-            ]
-            filtered_bid = [
-                price for price in order_depth.buy_orders.keys()
-                if abs(order_depth.buy_orders[price]) >= self.params[Product.KELP]["adverse_volume"]
-            ]
-            mm_ask = min(filtered_ask) if filtered_ask else None
-            mm_bid = max(filtered_bid) if filtered_bid else None
-            if mm_ask is None or mm_bid is None:
-                if traderObject.get("kelp_last_price") is None:
-                    mmmid_price = (best_ask + best_bid) / 2
+            max_ask = max(order_depth.sell_orders.keys())
+            min_bid = min(order_depth.buy_orders.keys())
+
+            if max_ask and min_bid:
+                # Calculate the fair value as the average of the best ask and best bid
+                fair_value = (max_ask + min_bid) / 2
+                traderObject["kelp_last_price"] = fair_value
+                return fair_value
+            else:
+                if traderObject.get("kelp_last_price") is not None:
+                    return traderObject["kelp_last_price"]
                 else:
-                    mmmid_price = traderObject["kelp_last_price"]
-            else:
-                mmmid_price = (mm_ask + mm_bid) / 2
+                    return None
+        else:
+            return None
 
-            if traderObject.get("kelp_last_price") is not None:
-                last_price = traderObject["kelp_last_price"]
-                last_returns = (mmmid_price - last_price) / last_price
-                pred_returns = last_returns * self.params[Product.KELP]["reversion_beta"]
-                fair = mmmid_price + (mmmid_price * pred_returns)
-            else:
-                fair = mmmid_price
+        # """
+        # Compute a dynamic, mean-reverting fair value for KELP.
+        # """
 
-            traderObject["kelp_last_price"] = mmmid_price
-            return fair
-        return None
+        # if order_depth.sell_orders and order_depth.buy_orders:
+        #     best_ask = min(order_depth.sell_orders.keys())
+        #     best_bid = max(order_depth.buy_orders.keys())
+        #     filtered_ask = [
+        #         price for price in order_depth.sell_orders.keys()
+        #         if abs(order_depth.sell_orders[price]) >= self.params[Product.KELP]["adverse_volume"]
+        #     ]
+        #     filtered_bid = [
+        #         price for price in order_depth.buy_orders.keys()
+        #         if abs(order_depth.buy_orders[price]) >= self.params[Product.KELP]["adverse_volume"]
+        #     ]
+        #     mm_ask = min(filtered_ask) if filtered_ask else None
+        #     mm_bid = max(filtered_bid) if filtered_bid else None
+        #     if mm_ask is None or mm_bid is None:
+        #         if traderObject.get("kelp_last_price") is None:
+        #             mmmid_price = (best_ask + best_bid) / 2
+        #         else:
+        #             mmmid_price = traderObject["kelp_last_price"]
+        #     else:
+        #         mmmid_price = (mm_ask + mm_bid) / 2
+
+        #     if traderObject.get("kelp_last_price") is not None:
+        #         last_price = traderObject["kelp_last_price"]
+        #         last_returns = (mmmid_price - last_price) / last_price
+        #         pred_returns = last_returns * self.params[Product.KELP]["reversion_beta"]
+        #         fair = mmmid_price + (mmmid_price * pred_returns)
+        #     else:
+        #         fair = mmmid_price
+
+        #     traderObject["kelp_last_price"] = mmmid_price
+        #     return fair
+        # return None
 
     def squidink_fair_value(self, order_depth: OrderDepth, traderObject) -> float:
         """
@@ -580,5 +605,6 @@ class Trader:
         conversions = 1
         traderData = jsonpickle.encode(traderObject)
 
-        logger.flush(state, result, conversions, traderData)
+        if self.flush:
+            logger.flush(state, result, conversions, traderData)
         return result, conversions, traderData
